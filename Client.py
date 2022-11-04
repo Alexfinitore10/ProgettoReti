@@ -15,7 +15,8 @@ from mutagen._util import get_size
 
 IpAddr = "127.0.0.1"
 Port = 12000
-info = {}
+info = {}  # Creo Un dizionario per immagazzinare informazioni
+s = socket.socket()
 
 
 def AnalizyingReq(req):
@@ -26,65 +27,71 @@ def AnalizyingReq(req):
             pass
 
 
-def CreazioneSocket():
+def CreaSocket() -> bool:
+    global s
     try:
-        informazioni = {}  # Creo Un dizionario per immagazzinare informazioni
-
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # socket Created
         print("Socket Created")
+        return True
+    except socket.error as e:
+        logging.exception(e)
+        return False
 
-        while True:
-            s.connect((IpAddr, Port)) # connecting the socket to the Server
+
+def Cliente() -> bool:
+    global s
+
+    req = s.recv(1024).decode()
+
+    response = AnalizyingReq(req)
+
+    if response == 1:
+        data = GetGeneralInfo()
+        s.send(data)
+        return True
+    else:
+        return False
+
+        #time.sleep(5)
+
+
+def Connection() -> bool:
+    connected = False
+    while not connected:
+        try:
+            s.connect((IpAddr, Port))
             print("Socket successfully created and connected")
-
-
-            data = GetGeneralInfo()
-
-            #s.send(f"Client Connected".encode())  # message sent
-
-            # ora dobbiamo preoccuparci di Ottenere tutte le informazioni del dispositivo su cui runna questo
-            # script.
-
-            # Quindi il client deve essere silente finchè il server invia richieste
-
-            req = s.recv(1024).decode()
-
-            response = AnalizyingReq(req)
-
-            if response == 1:
-                s.send(data)
-                s.close()
-            else:
+            connected = True
+            return True
+        except socket.error as se:
+            print(f"Error connecting the socket")
+            print("What do you want to do now?")
+            print("1)Retry")
+            print("2)Exit")
+            resp = input()
+            if resp == "1":
                 pass
-
-
-
-            time.sleep(5)
-
-
-
-
-    except socket.error as se:
-        print(f"Error creating the Socket")
-        print("What do you want to do now?")
-        print("1)Retry")
-        print("2)Exit")
-        resp = input()
-        if resp == "1":
-            pass
-        elif resp == "2":
-            exit()
-        else:
-            print("Rewrite the response better...")
-            time.sleep(2)
-            cls()
+            elif resp == "2":
+                s.close()
+                exit()
+            else:
+                print("Rewrite the response better...")
+                time.sleep(2)
+                cls()
 
 
 def main():
-    CreazioneSocket()
+    resp = True
+    CreaSocket()
+    Connection()
+    while resp:
+        resp = Cliente()
+    if not resp:
+        print("Connection Closed by the server")
 
 
-def GetGeneralInfo():
+def General():
+    global info
     try:
         info['platform'] = platform.system()
         info['platform-release'] = platform.release()
@@ -98,6 +105,13 @@ def GetGeneralInfo():
         boot_time_timestamp = psutil.boot_time()
         bt = datetime.fromtimestamp(boot_time_timestamp)
         info['Boot time'] = str(f"{bt.year}/{bt.month}/{bt.day} {bt.hour}:{bt.minute}:{bt.second}")
+    except Exception as e:
+        logging.exception(e)
+
+
+def Cores():
+    global info
+    try:
         info['Physical Cores'] = psutil.cpu_count(logical=False)
         info['Total Cores'] = psutil.cpu_count(logical=True)
         cpufreq = psutil.cpu_freq()
@@ -107,11 +121,25 @@ def GetGeneralInfo():
         for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
             info[f'Cpu {i} Usage Per Core'] = str(f"Core {i}: {percentage}%")
         info['Total Cpu Usage'] = str(f"{psutil.cpu_percent()}%")
+    except Exception as e:
+        logging.exception(e)
+
+
+def Swap():
+    global info
+    try:
         swap = psutil.swap_memory()
         info['Total Swap Memory'] = str(sys.getsizeof(swap.total))
         info['Free Swap Memory'] = str(sys.getsizeof(swap.free))
         info['Used Swap Memory'] = str(sys.getsizeof(swap.used))
         info['Percentage Swap Memory Used'] = str(f"Total: {swap.percent}")
+    except Exception as e:
+        logging.exception(e)
+
+
+def Partitions():
+    global info
+    try:
         partitions = psutil.disk_partitions()
         counter = 0
         for partition in partitions:
@@ -123,10 +151,17 @@ def GetGeneralInfo():
             info[f'Partition {counter} Used'] = str(sys.getsizeof(partition_usage.used))
             info[f'Partition {counter} Free'] = str(sys.getsizeof(partition_usage.free))
             info[f'Partition {counter} Percentage'] = str(sys.getsizeof(partition_usage.percent))
-            counter+=1
+            counter += 1
         disk_io = psutil.disk_io_counters()
         info['Total Read Since Boot'] = str(disk_io.read_bytes)
         info['Total Write Since Boot'] = str(disk_io.write_bytes)
+    except Exception as e:
+        logging.exception(e)
+
+
+def Network():
+    global info
+    try:
         if_addrs = psutil.net_if_addrs()
         for interface_name, interface_addresses in if_addrs.items():
             for address in interface_addresses:
@@ -141,6 +176,23 @@ def GetGeneralInfo():
         net_io = psutil.net_io_counters()
         info['Total Bytes Sent Since Launch'] = str(sys.getsizeof(net_io.bytes_sent))
         info['Total Bytes Received Since Launch'] = str(sys.getsizeof(net_io.bytes_recv))
+    except Exception as e:
+        logging.exception(e)
+
+
+def GetGeneralInfo():
+    global info
+    try:
+        General()
+
+        Cores()
+
+        Swap()
+
+        Partitions()
+
+        Network()
+
         return json.dumps(info,indent=4).encode("utf-8")
     except Exception as e:
         logging.exception(e)
