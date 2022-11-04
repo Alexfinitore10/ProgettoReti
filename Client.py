@@ -7,6 +7,7 @@ import sys
 import time
 import platform
 import uuid
+from cpuinfo import get_cpu_info
 from datetime import datetime
 
 # imported Libraries
@@ -93,15 +94,10 @@ def main():
 def General():
     global info
     try:
-        info['platform'] = platform.system()
-        info['platform-release'] = platform.release()
-        info['platform-version'] = platform.version()
-        info['architecture'] = platform.machine()
+        os_name = platform.system()
+        version = platform.version()
+        info['os'] = f"{os_name} - v. {version}"
         info['hostname'] = socket.gethostname()
-        info['ip-address'] = socket.gethostbyname(socket.gethostname())
-        info['mac-address'] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
-        info['processor'] = platform.processor()
-        info['ram'] = str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB"
         boot_time_timestamp = psutil.boot_time()
         bt = datetime.fromtimestamp(boot_time_timestamp)
         info['Boot time'] = str(f"{bt.year}/{bt.month}/{bt.day} {bt.hour}:{bt.minute}:{bt.second}")
@@ -112,27 +108,25 @@ def General():
 def Cores():
     global info
     try:
-        info['Physical Cores'] = psutil.cpu_count(logical=False)
-        info['Total Cores'] = psutil.cpu_count(logical=True)
+        cpu_name = get_cpu_info()['brand_raw']
+        cpu_family = platform.processor()
+        info['processor'] = f"{cpu_name} - {cpu_family}"
+        physical_cores = psutil.cpu_count(logical=False)
+        total_cores = psutil.cpu_count(logical=True)
+        info['cores'] = f"Physical Cores: {physical_cores} - Total Cores: {total_cores}"
         cpufreq = psutil.cpu_freq()
-        info['Cpu Current Frequency'] = str(f"{cpufreq.current:.2f}Mhz")
-        info['Cpu Max Frequency'] = str(f"{cpufreq.max:.2f}Mhz")
-        info['Cpu Min Frequency'] = str(f"{cpufreq.min:.2f}Mhz")
-        for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-            info[f'Cpu {i} Usage Per Core'] = str(f"Core {i}: {percentage}%")
-        info['Total Cpu Usage'] = str(f"{psutil.cpu_percent()}%")
+        info['Cpu Frequency'] = f"Current Frequency: {cpufreq.current} - Max Frequency: {cpufreq.max}"
+        #for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
+          #  info[f'Cpu {i} Usage Per Core'] = str(f"Core {i}: {percentage}%")
+        #info['Total Cpu Usage'] = str(f"{psutil.cpu_percent()}%")
     except Exception as e:
         logging.exception(e)
 
 
-def Swap():
+def ram():
     global info
     try:
-        swap = psutil.swap_memory()
-        info['Total Swap Memory'] = str(sys.getsizeof(swap.total))
-        info['Free Swap Memory'] = str(sys.getsizeof(swap.free))
-        info['Used Swap Memory'] = str(sys.getsizeof(swap.used))
-        info['Percentage Swap Memory Used'] = str(f"Total: {swap.percent}")
+        info['ram'] = psutil.virtual_memory().total #str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
     except Exception as e:
         logging.exception(e)
 
@@ -148,9 +142,6 @@ def Partitions():
             info['File System Type'] = str(partition.fstype)
             partition_usage = psutil.disk_usage(partition.mountpoint)
             info[f'Partition {counter} Total Size'] = str(sys.getsizeof(partition_usage.total))
-            info[f'Partition {counter} Used'] = str(sys.getsizeof(partition_usage.used))
-            info[f'Partition {counter} Free'] = str(sys.getsizeof(partition_usage.free))
-            info[f'Partition {counter} Percentage'] = str(sys.getsizeof(partition_usage.percent))
             counter += 1
         disk_io = psutil.disk_io_counters()
         info['Total Read Since Boot'] = str(disk_io.read_bytes)
@@ -162,17 +153,8 @@ def Partitions():
 def Network():
     global info
     try:
-        if_addrs = psutil.net_if_addrs()
-        for interface_name, interface_addresses in if_addrs.items():
-            for address in interface_addresses:
-                if str(address.family) == 'AddressFamily.AF_INET':
-                    info[f'Interface {interface_name} Ip Address'] = address.address
-                    info[f'Interface {interface_name} NetMask'] = address.netmask
-                    info[f'Interface {interface_name} Broadcast IP'] = address.broadcast
-                elif str(address.family) == 'AddressFamily.AF_PACKET':
-                    info[f'Interface {interface_name} MAC Address'] = address.address
-                    info[f'Interface {interface_name} NetMask'] = address.netmask
-                    info[f'Interface {interface_name} Broadcast MAC'] = address.broadcast
+        info['ip-address'] = socket.gethostbyname(socket.gethostname())
+        info['mac-address'] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         net_io = psutil.net_io_counters()
         info['Total Bytes Sent Since Launch'] = str(sys.getsizeof(net_io.bytes_sent))
         info['Total Bytes Received Since Launch'] = str(sys.getsizeof(net_io.bytes_recv))
@@ -182,20 +164,14 @@ def Network():
 
 def GetGeneralInfo():
     global info
-    try:
-        General()
 
-        Cores()
+    General()
+    Cores()
+    ram()
+    Partitions()
+    Network()
 
-        Swap()
-
-        Partitions()
-
-        Network()
-
-        return json.dumps(info,indent=4).encode("utf-8")
-    except Exception as e:
-        logging.exception(e)
+    return json.dumps(info,indent=4).encode("utf-8")
 
 
 def cls():
