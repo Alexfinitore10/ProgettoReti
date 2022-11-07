@@ -9,14 +9,17 @@ import platform
 import uuid
 from cpuinfo import get_cpu_info
 from datetime import datetime
+import math
 
 # imported Libraries
 import psutil
+from hurry.filesize import size
 from mutagen._util import get_size
 
-IpAddr = "127.0.0.1"
-Port = 12000
-info = {}  # Creo Un dizionario per immagazzinare informazioni
+
+IpAddr = "elvino00.ddns.net"
+Port = 41909
+info = {}
 s = socket.socket()
 
 
@@ -65,20 +68,9 @@ def Connection() -> bool:
             connected = True
             return True
         except socket.error as se:
-            print(f"Error connecting the socket")
-            print("What do you want to do now?")
-            print("1)Retry")
-            print("2)Exit")
-            resp = input()
-            if resp == "1":
-                pass
-            elif resp == "2":
-                s.close()
-                exit()
-            else:
-                print("Rewrite the response better...")
-                time.sleep(2)
-                cls()
+            print("Error connecting the socket. Trying again every 5s")
+            time.sleep(5)
+
 
 
 def main():
@@ -123,12 +115,23 @@ def Cores():
         logging.exception(e)
 
 
+
 def ram():
     global info
     try:
         info['ram'] = psutil.virtual_memory().total #str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
     except Exception as e:
         logging.exception(e)
+
+def convertRam(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
+
 
 
 def Partitions():

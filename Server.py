@@ -1,5 +1,6 @@
 # default imports
 import logging
+import signal
 import socket
 import sys
 import os
@@ -10,9 +11,11 @@ import platform
 
 
 # attributi globali
-Port = 12000
-IpAddr = "127.0.0.1"
+Port = 41909
+IpAddr = "192.168.1.16"
 s = socket.socket()
+
+
 
 
 #
@@ -97,6 +100,13 @@ def main():
 def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def signal_handler(signal,frame):
+    print("Keyboard Interrupt received: closing connection...")
+    s.close()
+    exit(1)
+
+
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT,signal_handler)
     main()
