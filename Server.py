@@ -103,7 +103,7 @@ def cls():
 def signal_handler(signal,frame):
     print("Keyboard Interrupt received: closing connection...")
     s.close()
-    exit(1)
+    exit(0)
 
 
 
