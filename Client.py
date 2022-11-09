@@ -10,14 +10,20 @@ import uuid
 from cpuinfo import get_cpu_info
 from datetime import datetime
 import math
+import shutil
+import signal
 
 # imported Libraries
 import psutil
 from hurry.filesize import size
 from mutagen._util import get_size
+import ipinfo
+import pprint
 
 
-IpAddr = "elvino00.ddns.net"
+access_token = '0ffd6eb3150512'
+IpAddr = "151.77.103.51"
+#IpAddr = "151.75.102.19"
 Port = 41909
 info = {}
 s = socket.socket()
@@ -63,6 +69,7 @@ def Connection() -> bool:
     connected = False
     while not connected:
         try:
+            print("prova")
             s.connect((IpAddr, Port))
             print("Socket successfully created and connected")
             connected = True
@@ -119,7 +126,7 @@ def Cores():
 def ram():
     global info
     try:
-        info['ram'] = psutil.virtual_memory().total #str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
+        info['ram'] = convertRam(psutil.virtual_memory().total) #str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
     except Exception as e:
         logging.exception(e)
 
@@ -152,6 +159,17 @@ def Partitions():
     except Exception as e:
         logging.exception(e)
 
+def Partizioni():
+    global info
+    try:
+        total, used, free = shutil.disk_usage("/")
+
+        info['Total Disk Memory'] = "Total: %d GiB" % (total // (2 ** 30))
+        info['Used Disk Memory'] = "Used: %d GiB" % (used // (2 ** 30))
+        info['Free Disk Memory'] = "Free: %d GiB" % (free // (2 ** 30))
+    except Exception as e:
+        logging.exception(e)
+
 
 def Network():
     global info
@@ -165,14 +183,28 @@ def Network():
         logging.exception(e)
 
 
+def Geolocation():
+    global info
+    try:
+        handler = ipinfo.getHandler(access_token)
+        details = handler.getDetails()
+        pprint.pprint(details.all)
+        info['Geolocation']['City'] = details.city
+        #info['Geolocation'][''] = details.city
+    except Exception as e:
+        print(f"Errore nel retrivial della location del computer : {logging.error(e)}")
+
+
 def GetGeneralInfo():
     global info
 
     General()
     Cores()
     ram()
-    Partitions()
+    #Partitions()
+    Partizioni()
     Network()
+    Geolocation()
 
     return json.dumps(info,indent=4).encode("utf-8")
 
@@ -181,5 +213,11 @@ def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
+def signal_handler(signal,frame):
+    print("Keyboard Interrupt received: closing connection...")
+    s.close()
+    exit(0)
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
     main()
