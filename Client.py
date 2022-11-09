@@ -1,29 +1,25 @@
 import json
 import logging
-import re
-import socket
-import os
-import sys
-import time
-import platform
-import uuid
-from cpuinfo import get_cpu_info
-from datetime import datetime
 import math
+import os
+import platform
+import re
 import shutil
 import signal
+import socket
+import time
+import uuid
+from datetime import datetime
+import urllib3
 
+import ipinfo
 # imported Libraries
 import psutil
-from hurry.filesize import size
-from mutagen._util import get_size
-import ipinfo
-import pprint
-
+from cpuinfo import get_cpu_info
 
 access_token = '0ffd6eb3150512'
-IpAddr = "151.77.103.51"
-#IpAddr = "151.75.102.19"
+IpAddr = "localhost"
+# IpAddr = "151.75.102.19"
 Port = 41909
 info = {}
 s = socket.socket()
@@ -62,14 +58,13 @@ def Cliente() -> bool:
     else:
         return False
 
-        #time.sleep(5)
+        # time.sleep(5)
 
 
 def Connection() -> bool:
     connected = False
     while not connected:
         try:
-            print("prova")
             s.connect((IpAddr, Port))
             print("Socket successfully created and connected")
             connected = True
@@ -77,7 +72,6 @@ def Connection() -> bool:
         except socket.error as se:
             print("Error connecting the socket. Trying again every 5s")
             time.sleep(5)
-
 
 
 def main():
@@ -115,20 +109,21 @@ def Cores():
         info['cores'] = f"Physical Cores: {physical_cores} - Total Cores: {total_cores}"
         cpufreq = psutil.cpu_freq()
         info['Cpu Frequency'] = f"Current Frequency: {cpufreq.current} - Max Frequency: {cpufreq.max}"
-        #for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-          #  info[f'Cpu {i} Usage Per Core'] = str(f"Core {i}: {percentage}%")
-        #info['Total Cpu Usage'] = str(f"{psutil.cpu_percent()}%")
+        # for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
+        #  info[f'Cpu {i} Usage Per Core'] = str(f"Core {i}: {percentage}%")
+        # info['Total Cpu Usage'] = str(f"{psutil.cpu_percent()}%")
     except Exception as e:
         logging.exception(e)
-
 
 
 def ram():
     global info
     try:
-        info['ram'] = convertRam(psutil.virtual_memory().total) #str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
+        info['ram'] = convertRam(
+            psutil.virtual_memory().total)  # str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
     except Exception as e:
         logging.exception(e)
+
 
 def convertRam(size_bytes):
     if size_bytes == 0:
@@ -139,25 +134,6 @@ def convertRam(size_bytes):
     s = round(size_bytes / p, 2)
     return "%s %s" % (s, size_name[i])
 
-
-
-def Partitions():
-    global info
-    try:
-        partitions = psutil.disk_partitions()
-        counter = 0
-        for partition in partitions:
-            info[f'Partition {counter}'] = str(partition.device)
-            info[f'Mountpoint'] = str(partition.mountpoint)
-            info['File System Type'] = str(partition.fstype)
-            partition_usage = psutil.disk_usage(partition.mountpoint)
-            info[f'Partition {counter} Total Size'] = str(sys.getsizeof(partition_usage.total))
-            counter += 1
-        disk_io = psutil.disk_io_counters()
-        info['Total Read Since Boot'] = str(disk_io.read_bytes)
-        info['Total Write Since Boot'] = str(disk_io.write_bytes)
-    except Exception as e:
-        logging.exception(e)
 
 def Partizioni():
     global info
@@ -185,7 +161,6 @@ def Geolocation():
     try:
         handler = ipinfo.getHandler(access_token)
         details = handler.getDetails()
-        pprint.pprint(details.all)
         city = details.city
         region = details.region
         country = details.country
@@ -195,9 +170,19 @@ def Geolocation():
         info['Location'] = f"{city}, {region}, {country}, postal code : {postal}"
         info['Latitude and Logitude'] = f"{location}"
         info['Internet ISP'] = f"{ISP}"
-        info['Geolocation'][''] = details.city
     except Exception as e:
         print(f"Errore nel retrivial della location del computer : {logging.error(e)}")
+
+
+def IsConnected() -> bool:
+    try:
+        host = "1.1.1.1"
+        host = socket.gethostbyname(host)
+        s = socket.create_connection((host, 80), 2)
+        s.close()
+        return True
+    except Exception as e:
+        return False
 
 
 def GetGeneralInfo():
@@ -206,22 +191,23 @@ def GetGeneralInfo():
     General()
     Cores()
     ram()
-    #Partitions()
     Partizioni()
-    Network()
-    Geolocation()
+    if IsConnected():
+        Network()
+        Geolocation()
 
-    return json.dumps(info,indent=4).encode("utf-8")
+    return json.dumps(info, indent=4).encode("utf-8")
 
 
 def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def signal_handler(signal,frame):
+def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
     s.close()
     exit(0)
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
