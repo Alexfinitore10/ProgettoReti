@@ -176,9 +176,6 @@ def Network():
     try:
         info['ip-address'] = socket.gethostbyname(socket.gethostname())
         info['mac-address'] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
-        net_io = psutil.net_io_counters()
-        info['Total Bytes Sent Since Launch'] = str(sys.getsizeof(net_io.bytes_sent))
-        info['Total Bytes Received Since Launch'] = str(sys.getsizeof(net_io.bytes_recv))
     except Exception as e:
         logging.exception(e)
 
@@ -189,8 +186,16 @@ def Geolocation():
         handler = ipinfo.getHandler(access_token)
         details = handler.getDetails()
         pprint.pprint(details.all)
-        info['Geolocation']['City'] = details.city
-        #info['Geolocation'][''] = details.city
+        city = details.city
+        region = details.region
+        country = details.country
+        postal = details.postal
+        location = details.loc
+        ISP = details.org
+        info['Location'] = f"{city}, {region}, {country}, postal code : {postal}"
+        info['Latitude and Logitude'] = f"{location}"
+        info['Internet ISP'] = f"{ISP}"
+        info['Geolocation'][''] = details.city
     except Exception as e:
         print(f"Errore nel retrivial della location del computer : {logging.error(e)}")
 

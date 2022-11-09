@@ -7,17 +7,13 @@ import os
 import time
 import platform
 
-
 # downloaded imports
 
 
 # attributi globali
 Port = 41909
-IpAddr = "localhost"
+IpAddr = "192.168.1.169"
 s = socket.socket()
-
-
-
 
 #
 
