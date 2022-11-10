@@ -2,22 +2,20 @@
 import logging
 import signal
 import socket
-import sys
-import os
 import time
-import platform
+
 
 # downloaded imports
 
 
 # attributi globali
-Port = 41909
+Port = 9091
 IpAddr = "localhost"
 s = socket.socket()
 access_token = '0ffd6eb3150512'
 
 
-#
+
 
 def MenuClient():
     while True:
@@ -40,21 +38,7 @@ def MenuClient():
             return x
         else:
             print("Inserisci un numero valido")
-        """if resp == '1':
-            return 1
-        elif resp == '2':  # CPU
-            return 2
-        elif resp == '3':
-            return 3
-        elif resp == '4':
-            return 4
-        elif resp == '5':
-            return 5
-        elif resp == '6':
-            return 6
-        else:
-            print("Enter a valid Number")
-            time.sleep(2)"""
+
 
 
 def Operazioni(client):
@@ -72,20 +56,28 @@ def Operazioni(client):
 
         time.sleep(1)  # riga finale prima dell'ultima operazione
 
-        print("Do you Want To close the connection?")
-        print("1)Yes")
-        print("2)No")
-        if CloseConnection(client):
+
+        if CloseConnection():
+            client.close()
             break
 
 
-def CloseConnection(client):
+
+
+def CloseConnection():
+    print("Do you Want To close the connection?")
+    print("1)Yes")
+    print("2)No")
+
     response = input()
     if response == "2":
         return False
     elif response == "1":
         client.close()
         return True
+    else:
+        return CloseConnection()
+
 
 
 
@@ -145,9 +137,6 @@ def main():
         esisteclient = ConnectionMenu()
     s.close()
 
-
-"""def cls():
-    os.system('cls' if os.name == 'nt' else 'clear')"""
 
 
 def signal_handler(signal, frame):

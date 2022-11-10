@@ -1,7 +1,6 @@
 import json
 import logging
 import math
-import os
 import platform
 import re
 import shutil
@@ -10,17 +9,17 @@ import socket
 import time
 import uuid
 from datetime import datetime
-from typing import Tuple
 
-import ipinfo
+
+
 # imported Libraries
+import ipinfo
 import psutil
 from cpuinfo import get_cpu_info
 
 access_token = ''
 IpAddr = "localhost"
-# IpAddr = "151.75.102.19"
-Port = 41909
+Port = 9091
 info = {}
 s = socket.socket()
 
@@ -48,7 +47,6 @@ def Cliente() -> bool:
         return True
     elif req == '2': #CPU
         data = Cores()
-        print(data)
         s.send(data)
         return True
     elif req == '3': #RAM
@@ -68,7 +66,6 @@ def Cliente() -> bool:
         s.send(data)
         return True
     else:
-        print("exiting")
         return False
 
 def Connection():
@@ -127,7 +124,7 @@ def ram():
     global info
     try:
         info['ram'] = convertRam(
-            psutil.virtual_memory().total)  # str(round(psutil.virtual_memory().total / (1024.0 ** 3))) + " GB" #da aggiustare
+            psutil.virtual_memory().total)
         return json.dumps(info, indent=4).encode("utf-8")
     except Exception as e:
         logging.exception(e)
@@ -159,7 +156,7 @@ def Network():
     try:
         handler = ipinfo.getHandler(access_token)
         details = handler.getDetails()
-        info['ip-address'] = details.ip#socket.gethostbyname(socket.gethostname())
+        info['ip-address'] = details.ip
         info['mac-address'] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         return json.dumps(info, indent=4).encode("utf-8")
     except Exception as e:
