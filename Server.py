@@ -14,6 +14,7 @@ import platform
 Port = 41909
 IpAddr = "localhost"
 s = socket.socket()
+access_token = '0ffd6eb3150512'
 
 
 #
@@ -22,13 +23,29 @@ def MenuClient():
     while True:
         print("What do you want to do?")
         print("1)Get All Information about the system")
-        print("2)TODO")
-        print("3)TODO")
+        print("2)Get Cpu Information")
+        print("3)Get Ram Information")
+        print("4)Get current Disk Information")
+        print("5)Get Network Information")
+        print("6)Get Geolocalization Information")
+
         resp = input()
-        if resp == "1":
+        if resp == '1':
             return 1
+        elif resp == '2':  # CPU
+            return 2
+        elif resp == '3':
+            return 3
+        elif resp == '4':
+            return 4
+        elif resp == '5':
+            return 5
+        elif resp == '6':
+            return 6
         else:
-            break
+            print("Enter a valid Number")
+            time.sleep(2)
+            pass
 
 
 def Operazioni(client, address):
@@ -39,8 +56,24 @@ def Operazioni(client, address):
         if res == 1:
             client.send(str(res).encode())
             print("Message Sent!")
+        elif res == 2:
+            client.send(str(res).encode())
+            print("Message Sent!")
+        elif res == 3:
+            client.send(str(res).encode())
+            print("Message Sent!")
+        elif res == 4:
+            client.send(str(res).encode())
+            print("Message Sent!")
+        elif res == 5:
+            client.send(str(res).encode())
+            print("Message Sent!")
+        elif res == 6:
+            client.send(str(res).encode())
+            print("Message Sent!")
         else:
             pass
+
 
         message = client.recv(8192).decode()
         print("Message received!")
@@ -80,10 +113,16 @@ def CreaBind():
 
 def Listen():
     global s
-    print("Now in listening...")
-    s.listen(5)
-    client, address = s.accept()
-    return client, address
+    try:
+        print("Now in listening...")
+        s.listen(5)
+        client, address = s.accept()
+        client.send(str(access_token).encode())
+        return client, address
+    except Exception as e:
+        print("Errore nel listen")
+        s.close()
+        logging.error(e)
 
 
 def ConnectionMenu() -> bool:
