@@ -40,7 +40,6 @@ def Cliente() -> bool:
 
     req = s.recv(1024).decode()
 
-    print("prova1")
     info = {}
 
     if req == '1':
@@ -48,33 +47,29 @@ def Cliente() -> bool:
         s.send(data)
         return True
     elif req == '2': #CPU
-        print("Prova")
         data = Cores()
         print(data)
         s.send(data)
         return True
-    elif req == '3':
+    elif req == '3': #RAM
         data = ram()
         s.send(data)
         return True
-    elif req == '4':
+    elif req == '4': #PARTITION
         data = Partizioni()
         s.send(data)
         return True
-    elif req == '5':
+    elif req == '5': #NETWORK
         data = Network()
         s.send(data)
         return True
-    elif req == '6':
+    elif req == '6': #GEOLOCATION
         data = Geolocation()
         s.send(data)
         return True
     else:
         print("exiting")
         return False
-
-        # time.sleep(5)
-
 
 def Connection():
     global s
@@ -90,7 +85,6 @@ def Connection():
             print("Error connecting the socket. Trying again every 5s")
             time.sleep(5)
 
-
 def main():
     global access_token
     resp = True
@@ -100,7 +94,6 @@ def main():
         resp = Cliente()
     if not resp:
         print("Connection Closed by the server")
-
 
 def General():
     global info
@@ -114,7 +107,6 @@ def General():
         info['Boot time'] = str(f"{bt.year}/{bt.month}/{bt.day} {bt.hour}:{bt.minute}:{bt.second}")
     except Exception as e:
         logging.exception(e)
-
 
 def Cores():
     global info
@@ -150,7 +142,6 @@ def convertRam(size_bytes):
     s = round(size_bytes / p, 2)
     return "%s %s" % (s, size_name[i])
 
-
 def Partizioni():
     global info
     try:
@@ -163,7 +154,6 @@ def Partizioni():
     except Exception as e:
         logging.exception(e)
 
-
 def Network():
     global info
     try:
@@ -174,7 +164,6 @@ def Network():
         return json.dumps(info, indent=4).encode("utf-8")
     except Exception as e:
         logging.exception(e)
-
 
 def Geolocation():
     global info
@@ -194,7 +183,6 @@ def Geolocation():
     except Exception as e:
         print(f"Errore nel retrivial della location del computer : {logging.error(e)}")
 
-
 def IsConnected() -> bool:
     try:
         host = "1.1.1.1"
@@ -204,7 +192,6 @@ def IsConnected() -> bool:
         return True
     except Exception as e:
         return False
-
 
 def GetGeneralInfo():
     global info
@@ -218,7 +205,6 @@ def GetGeneralInfo():
         Geolocation()
 
     return json.dumps(info, indent=4).encode("utf-8")
-
 
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")

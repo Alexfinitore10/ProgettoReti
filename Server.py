@@ -29,8 +29,18 @@ def MenuClient():
         print("5)Get Network Information")
         print("6)Get Geolocalization Information")
 
+        x = 0
         resp = input()
-        if resp == '1':
+        try:
+            x = int(resp)
+
+        except ValueError:
+            print("Inserisci un numero valido")
+        if(x>0 and x<7):
+            return x
+        else:
+            print("Inserisci un numero valido")
+        """if resp == '1':
             return 1
         elif resp == '2':  # CPU
             return 2
@@ -44,35 +54,16 @@ def MenuClient():
             return 6
         else:
             print("Enter a valid Number")
-            time.sleep(2)
-            pass
+            time.sleep(2)"""
 
 
-def Operazioni(client, address):
+def Operazioni(client):
     while True:
         res = MenuClient()
 
         print(res)
-        if res == 1:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        elif res == 2:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        elif res == 3:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        elif res == 4:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        elif res == 5:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        elif res == 6:
-            client.send(str(res).encode())
-            print("Message Sent!")
-        else:
-            pass
+        client.send(str(res).encode())
+        print("Message Sent!")
 
 
         message = client.recv(8192).decode()
@@ -80,15 +71,22 @@ def Operazioni(client, address):
         print(message)
 
         time.sleep(1)  # riga finale prima dell'ultima operazione
+
         print("Do you Want To close the connection?")
         print("1)Yes")
         print("2)No")
-        response = input()
-        if response == "2":
-            pass
-        elif response == "1":
-            client.close()
+        if CloseConnection(client):
             break
+
+
+def CloseConnection(client):
+    response = input()
+    if response == "2":
+        return False
+    elif response == "1":
+        client.close()
+        return True
+
 
 
 def CreaSocket():
@@ -117,6 +115,7 @@ def Listen():
         print("Now in listening...")
         s.listen(5)
         client, address = s.accept()
+        print(f"Connessione accettata con {client.getpeername()}")
         client.send(str(access_token).encode())
         return client, address
     except Exception as e:
@@ -141,14 +140,14 @@ def main():
     CreaSocket()
     CreaBind()
     while not esisteclient:
-        client, address = Listen()
-        Operazioni(client, address)
+        client, _ = Listen()
+        Operazioni(client)
         esisteclient = ConnectionMenu()
     s.close()
 
 
-def cls():
-    os.system('cls' if os.name == 'nt' else 'clear')
+"""def cls():
+    os.system('cls' if os.name == 'nt' else 'clear')"""
 
 
 def signal_handler(signal, frame):
