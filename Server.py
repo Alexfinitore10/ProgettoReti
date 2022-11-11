@@ -73,7 +73,6 @@ def CloseConnection():
     if response == "2":
         return False
     elif response == "1":
-        client.close()
         return True
     else:
         return CloseConnection()
@@ -125,6 +124,8 @@ def ConnectionMenu() -> bool:
         return False
     elif risposta == '2':
         return True
+    else:
+        return ConnectionMenu()
 
 
 def main():
