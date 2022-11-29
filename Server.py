@@ -50,11 +50,12 @@ import time
 
 
 # downloaded imports
+import pyfiglet
 
 
 # attributi globali
 Port = 9091
-IpAddr = "localhost"
+IpAddr = "192.168.1.154"
 s = socket.socket()
 access_token = '0ffd6eb3150512'
 
@@ -189,6 +190,9 @@ def signal_handler(signal, frame):
     s.close()
     exit(0)
 
+def groupText():
+    print(pyfiglet.figlet_format("The Phantom Thieves StealBot"))
+
 def Phantom():
     print("""                                                                                                                                                      
                                                                                                                                                       
@@ -226,5 +230,6 @@ def Phantom():
                                                                                                                                                       """)
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
+    groupText()
     Phantom()
     main()
