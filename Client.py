@@ -52,9 +52,9 @@ import signal
 import socket
 import time
 import uuid
+import threading
 from datetime import datetime
-
-
+import ipaddress
 
 # imported Libraries
 import ipinfo
@@ -62,10 +62,15 @@ import psutil
 from cpuinfo import get_cpu_info
 
 access_token = ''
-IpAddr = "localhost"
+IpAddr = ""
 Port = 9091
 info = {}
 s = socket.socket()
+connected = False
+
+# For Threading
+Connesso = True
+
 
 def CreaSocket() -> bool:
     global s
@@ -89,52 +94,63 @@ def Cliente() -> bool:
         data = GetGeneralInfo()
         s.send(data)
         return True
-    elif req == '2': #CPU
+    elif req == '2':  # CPU
         data = Cores()
         s.send(data)
         return True
-    elif req == '3': #RAM
+    elif req == '3':  # RAM
         data = ram()
         s.send(data)
         return True
-    elif req == '4': #PARTITION
+    elif req == '4':  # PARTITION
         data = Partizioni()
         s.send(data)
         return True
-    elif req == '5': #NETWORK
+    elif req == '5':  # NETWORK
         data = Network()
         s.send(data)
         return True
-    elif req == '6': #GEOLOCATION
+    elif req == '6':  # GEOLOCATION
         data = Geolocation()
         s.send(data)
         return True
     else:
         return False
 
-def Connection():
-    global s
-    connected = False
+
+def getTokenFromConnection():
+    global s, connected
     while not connected:
         try:
-            s.connect((IpAddr, Port))
-            print("Socket successfully created and connected")
-            connected = True
             token = s.recv(14).decode()
+            connected = True
             return token
         except socket.error as se:
-            print("Error connecting the socket. Trying again every 5s")
-            time.sleep(5)
+            print("Error getting token from the socket. Retrying in 5 min")
+
+
+''' while not connected:
+    try:
+        #s.connect((IpAddr, Port))
+        print("Socket successfully created and connected")
+        token = s.recv(14).decode()
+        return token
+    except socket.error as se:
+        print("Error connecting the socket. Trying again every 5s")
+        time.sleep(5)'''
+
 
 def main():
     global access_token
     resp = True
     CreaSocket()
-    access_token = Connection()
+    mainThreadingFunction()
+    access_token = getTokenFromConnection()
     while resp:
         resp = Cliente()
     if not resp:
         print("Connection Closed by the server")
+
 
 def General():
     global info
@@ -148,6 +164,7 @@ def General():
         info['Boot time'] = str(f"{bt.year}/{bt.month}/{bt.day} {bt.hour}:{bt.minute}:{bt.second}")
     except Exception as e:
         logging.exception(e)
+
 
 def Cores():
     global info
@@ -163,6 +180,7 @@ def Cores():
     except Exception as e:
         logging.exception(e)
     return json.dumps(info, indent=4).encode("utf-8")
+
 
 def ram():
     global info
@@ -183,6 +201,7 @@ def convertRam(size_bytes):
     s = round(size_bytes / p, 2)
     return "%s %s" % (s, size_name[i])
 
+
 def Partizioni():
     global info
     try:
@@ -195,6 +214,7 @@ def Partizioni():
     except Exception as e:
         logging.exception(e)
 
+
 def Network():
     global info
     try:
@@ -205,6 +225,7 @@ def Network():
         return json.dumps(info, indent=4).encode("utf-8")
     except Exception as e:
         logging.exception(e)
+
 
 def Geolocation():
     global info
@@ -224,6 +245,7 @@ def Geolocation():
     except Exception as e:
         print(f"Errore nel retrivial della location del computer : {logging.error(e)}")
 
+
 def IsConnected() -> bool:
     try:
         host = "1.1.1.1"
@@ -233,6 +255,7 @@ def IsConnected() -> bool:
         return True
     except Exception as e:
         return False
+
 
 def GetGeneralInfo():
     global info
@@ -247,11 +270,83 @@ def GetGeneralInfo():
 
     return json.dumps(info, indent=4).encode("utf-8")
 
+
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
     s.close()
     exit(0)
 
+
+#  --------------------------------THREADING AND IP CHECKING FUNCTIONS--------------------------------------------------
+
+
+def mainThreadingFunction():
+    print("Scannerizzo gli ip della sottorete per trovare quello del server...")
+    ricerca = False
+    threads = []
+    number_of_threads = 50
+    list1 = []
+
+    list1 = splitter(number_of_threads)
+
+    cerca(ricerca, list1)
+    print(f"Sono riuscito a trovare un Server con indirizzo {IpAddr}")
+
+
+def cerca(ricerca, list1):
+    while not ricerca:
+        retry = loop(list1)
+        if retry == False:
+            ricerca = True
+
+        while retry:
+            if Connesso == True:
+                print("Nessun thread ha trovato l'ip giusto, vuoi riprovare a cercare?")
+                print("1)Si")
+                print("2)No")
+                riprova = input()
+                if riprova == '1':
+                    pass
+                elif riprova == '2':
+                    retry = False
+                    ricerca = True
+                else:
+                    print("Inserisci un numero corretto")
+
+
+def loop(lista):
+    global Connesso, IpAddr, exitflag1
+    retry = True
+    for i in lista:
+        if Connesso == True and checkConnection(i):
+            print(f"Sono riuscito a connettermi a {i} ")
+            IpAddr = str(i)
+            retry = False
+            return retry
+        elif Connesso == False:
+            pass
+        else:
+            print(f"Non sono riuscito a connettermi a {i} ")
+    return retry
+
+def checkConnection(i):
+    global s
+    print(f"Mi provo a connettere a {i}")
+    try:
+        s = socket.create_connection((socket.gethostbyname(str(i)), 9091))
+        if s:  # sock.connect_ex((socket.gethostbyname(str(i)), 9091)) == 0:
+            return True
+        else:
+            return False
+    except socket.error as e:
+        return False
+
+
+def splitter(passo):
+    numberlist = []
+    for i in range(2, 255):
+        numberlist.append(f"192.168.1.{i}")
+    return numberlist
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
