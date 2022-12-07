@@ -56,7 +56,7 @@ import pyfiglet
 
 # attributi globali
 Port = 9091
-IpAddr = "192.168.1.154"
+IpAddr = "192.168.1.179"
 s = socket.socket()
 access_token = '0ffd6eb3150512'
 
@@ -91,13 +91,9 @@ def MenuClient():
 
 def cosaFareInizialmente(client) -> bool:
     response = MenuClient()
-    if response == '7':
-        #far partire le funzioni di scan file
-        chosen_path = scanPaths(client)
-        client.send(chosen_path)
-        found_files, files_by_number = downloadMenu(client)
-        client.send(found_files)
-        pass
+    if response == 7:
+        client.send("7".encode())
+        retrievalOperations(client)
     else:
         #inviare normalmente le richieste
         OttieniInformazioni(client, response)
@@ -107,6 +103,15 @@ def cosaFareInizialmente(client) -> bool:
         return False
     else:
         return True
+
+def retrievalOperations(client):
+    chosen_path = scanPaths(client)
+    client.send(chosen_path.encode("utf-8"))
+    found_files, files_by_number = downloadMenu(client)
+    client.send(found_files)
+    time.sleep(3)
+    client.send(files_by_number)
+    downloaderFunction(client)
 
 def OttieniInformazioni(client, res):
     #res = MenuClient()
@@ -209,27 +214,15 @@ def main():
 
 def scanPaths(client_object):
     path_dict = client_object.recv(1092).decode()
+    path_dict = json.loads(path_dict)
     print("Scegliere quale dei seguenti percorsi scannerizzare:")
     print(path_dict)
     choice = int(input())
-    lines = {}
-    path_dict = path_dict.replace('{', '')
-    path_dict = path_dict.replace('}', '')
-    index = 1
-    for i in path_dict.splitlines():
-        if i != '':
-            mod_string = i[3:-1]
-            mod_string = mod_string.split(f'"{index})')
-            result = '"'.join(mod_string)
-            result = result.split(":")
-            result[0] = result[0].replace('"','')
-            result[1] = result[1].replace('"','')
-            lines[str(result[0])] = str(result[1])
-            index += 1
 
-    path = list(lines.values())[choice-1]
 
-    return bytes(path)
+    path = list(path_dict.values())[choice-1]
+
+    return path
 
 
 def calculate_range_number(start: int, end: int, list: list):
@@ -269,8 +262,6 @@ def filteredList(rawList):
 
 
 def downloadMenu(client_object):
-    choice = 0
-
     found_files = client_object.recv(8192).decode()
     found_files = json.loads(found_files)
     found_files_number = []
@@ -306,14 +297,13 @@ def downloaderFunction(client_object):
     number_of_files = int(number_of_files)
     for i in range(0,number_of_files):
         file_name = client_object.recv(1092).decode("utf-8","ignore")
-        file_name = file_name[file_name.rfind('/') + 1:len(file_name)]
+        file_name = os.path.basename(file_name)
         client_object.send("ho ricevuto il file-name".encode("utf-8"))
         path = "./downloaded_files"
         if not os.path.exists(path):
             os.mkdir(path=path)
 
         with open(os.path.join(path,file_name), 'wb') as file_to_write:
-            print(f"Sto scaricando il file: {file_name}, devo scaricare ancora: {number_of_files - i} files")
             data = recvall(client_object)
             file_to_write.write(data)
 
@@ -321,14 +311,13 @@ def downloaderFunction(client_object):
 
 
 def recvall(sock):
-    BUFF_SIZE = 4096 # 4 KiB
+    BUFF_SIZE = 4096
     data = b''
     while True:
         part = sock.recv(BUFF_SIZE)
         data += part
         if len(part) < BUFF_SIZE:
-            # either 0 or end of data
-            break
+            break    # 0 bit da scaricare o end of file
     return data
 
 

