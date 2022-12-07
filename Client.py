@@ -114,6 +114,9 @@ def Cliente() -> bool:
         data = Geolocation()
         s.send(data)
         return True
+    elif req == '7':
+        #gestione dello scan della libreria
+        pass
     else:
         return False
 
@@ -129,23 +132,22 @@ def getTokenFromConnection():
             print("Error getting token from the socket. Retrying in 5 min")
 
 
-''' while not connected:
-    try:
-        #s.connect((IpAddr, Port))
-        print("Socket successfully created and connected")
-        token = s.recv(14).decode()
-        return token
-    except socket.error as se:
-        print("Error connecting the socket. Trying again every 5s")
-        time.sleep(5)'''
 
 
 def main():
     global access_token
     resp = True
+
     CreaSocket()
+    #Socket Appena Creato
+
     mainThreadingFunction()
+    #Se esce da qui ha trovato il server
+
     access_token = getTokenFromConnection()
+    #token mandato al server per l'ip
+
+    #Richieste per le infor di sistema
     while resp:
         resp = Cliente()
     if not resp:
@@ -283,11 +285,8 @@ def signal_handler(signal, frame):
 def mainThreadingFunction():
     print("Scannerizzo gli ip della sottorete per trovare quello del server...")
     ricerca = False
-    threads = []
-    number_of_threads = 50
-    list1 = []
 
-    list1 = splitter(number_of_threads)
+    list1 = splitter()
 
     cerca(ricerca, list1)
     print(f"Sono riuscito a trovare un Server con indirizzo {IpAddr}")
@@ -318,33 +317,33 @@ def loop(lista):
     global Connesso, IpAddr, exitflag1
     retry = True
     for i in lista:
-        if Connesso == True and checkConnection(i):
+        if Connesso == True and s.connect_ex((socket.gethostbyname(str(i)), Port)) == 0:#checkConnection(i):
             print(f"Sono riuscito a connettermi a {i} ")
             IpAddr = str(i)
             retry = False
             return retry
-        elif Connesso == False:
+        elif not Connesso:
             pass
         else:
             print(f"Non sono riuscito a connettermi a {i} ")
     return retry
 
-def checkConnection(i):
+'''def checkConnection(i):
     global s
     print(f"Mi provo a connettere a {i}")
     try:
-        s = socket.create_connection((socket.gethostbyname(str(i)), 9091))
+        s = socket.create_connection((socket.gethostbyname(str(i)), Port))
         if s:  # sock.connect_ex((socket.gethostbyname(str(i)), 9091)) == 0:
             return True
         else:
             return False
     except socket.error as e:
-        return False
+        return False'''
 
 
-def splitter(passo):
+def splitter():
     numberlist = []
-    for i in range(2, 255):
+    for i in range(150, 254):
         numberlist.append(f"192.168.1.{i}")
     return numberlist
 
