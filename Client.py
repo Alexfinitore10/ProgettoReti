@@ -416,7 +416,7 @@ def loop(lista):
 
 def splitter():
     numberlist = []
-    for i in range(177, 180):
+    for i in range(169, 180):
         numberlist.append(f"192.168.1.{i}")
     return numberlist
 

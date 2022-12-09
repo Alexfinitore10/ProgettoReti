@@ -55,7 +55,7 @@ from hurry.filesize import size
 
 # attributi globali
 Port = 9091
-IpAddr = "192.168.1.179"
+IpAddr = "192.168.1.169"
 s = socket.socket()
 access_token = '0ffd6eb3150512'
 
@@ -235,7 +235,7 @@ def is_str_correct(str, nof):
 
     for i in range(0, len(str)):
         if i == len(str) - 1 and (str[i] != ',' or str[i] != '-'):
-            if 0 < int(str[i]) <= nof:
+            if 0 <= int(str[i]) <= nof:
                 return True
             else:
                 return False
