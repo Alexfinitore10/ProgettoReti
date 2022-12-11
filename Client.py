@@ -52,19 +52,21 @@ import signal
 import socket
 import time
 import uuid
-import threading
 from datetime import datetime
 import ipaddress
 from pathlib import Path
 import os
+
 # imported Libraries
-#import ipinfo
+# import ipinfo
 import psutil
 from cpuinfo import get_cpu_info
 import ipinfo
+import click
+
 access_token = ''
 IpAddr = ""
-Port = 9091
+Port = 58131
 info = {}
 s = socket.socket()
 connected = False
@@ -73,11 +75,15 @@ connected = False
 Connesso = True
 
 
+# For Options
+
+
 def CreaSocket() -> bool:
     global s
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # socket Created
         print("Socket Created")
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return True
     except socket.error as e:
         logging.exception(e)
@@ -86,8 +92,10 @@ def CreaSocket() -> bool:
 
 def Cliente() -> bool:
     global s, info
-
+    print("sono prima della receive")
     req = s.recv(1024).decode()
+    print("sono dopo della receive")
+    print(f"Ecco cosa mi è arrivato dal server: {req}")
 
     info = {}
 
@@ -118,19 +126,26 @@ def Cliente() -> bool:
     elif req == '7':
         fileRetrieval()
         return True
-    else:
+    elif req == 'quit':
         return False
 
 
 def getTokenFromConnection():
-    global s, connected
+    global s, connected, access_token
+    counter = 0
     while not connected:
         try:
-            token = s.recv(14).decode()
+            print("Provo a ricevere il token dal server")
+            access_token = s.recv(14).decode()
             connected = True
-            return token
+            print(f"token : {access_token}")
+            return True
         except socket.error as se:
+            counter += 1
             print("Error getting token from the socket. Retrying in 5 min")
+            time.sleep(5)
+            if counter == 5:
+                return False
 
 
 def fileRetrieval():
@@ -138,29 +153,54 @@ def fileRetrieval():
     s.send(paths.encode())
     file_numbers = scanDir()
     s.send(file_numbers)
+    print("Ho inviato il path")
     status = s.recv(1092).decode("utf-8")
     if status == "quit":
         return
+    time.sleep(2)
     uploaderFunction()
 
-def main():
-    global access_token
-    resp = True
 
-    CreaSocket()
-    #Socket Appena Creato
+@click.command()
+@click.option('--ip', default="127.0.0.1", help="Inserisci l'ip a cui vuoi che il client si connetta")
+def main(ip: str):
+    global connected, IpAddr
 
-    mainThreadingFunction()
-    #Se esce da qui ha trovato il server
+    while True:
+        resp = True
+        connected = False
+        CreaSocket()  # Socket Appena Creato
 
-    access_token = getTokenFromConnection()
-    #token mandato al server per l'ip
+        if ip == "127.0.0.1":
+            print("L'applicazione è stata avviata senza ip... Procedo a cercare automaticamente quello del server...")
+            mainSearchFunction()
+        else:
+            print(f"L'applicazione è stata avviata con un ip da controllare: {ip}")
+            while True:
+                if loop2(ip):
+                    IpAddr = ip
+                    break
+                else:
+                    time.sleep(5)
 
-    #Richieste per le infor di sistema
-    while resp:
-        resp = Cliente()
-    if not resp:
-        print("Connection Closed by the server")
+
+        # Se esce da qui ha trovato il server
+
+        risp = getTokenFromConnection()
+        if risp:
+            # token mandato al server per l'ip
+
+            # Richieste per le info di sistema
+            print(f"resp prima del loop: {resp}")
+            while resp:
+                resp = Cliente()
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except socket.error as e:
+                logging.error(f"Errore nella chiusura del socket: {e}")
+            s.close()
+            print("Connection Closed by the server, retrying to connect in about 20 seconds...")
+            time.sleep(20)
 
 
 def General():
@@ -281,20 +321,6 @@ def GetGeneralInfo():
 
     return json.dumps(info, indent=4).encode("utf-8")
 
-"""def getPaths():
-    print("sono entrato in getPaths")
-    Relative_path = str(Path.home()) + '/.config/user-dirs.dirs'  #/home/$USER/.config/user-dirs.dirs
-    print(Relative_path)  #secondo print
-    count = 1
-    with open(Relative_path ,'r') as file: #open file and when scope is ended, automatically close it
-        path_dict = {}
-        for i  in file.read().splitlines():   #read file row by row
-            if i.startswith("XDG"):   #if string starts with XDG...
-                x = i.split("$HOME/")  #only get second part of "$HOME/..."  (gets the final " too)
-                path_dict[f"{count}) {x[1][:-1]}"] =  str(Path.home()) + "/" + x[1][:-1]
-                count += 1
-
-    return json.dumps(path_dict,indent=4).encode("utf-8")"""
 
 def getPaths():
     home = Path.home()
@@ -309,43 +335,47 @@ def getPaths():
 
     return json.dumps(dictionary)
 
+
 def scanDir():
     input = s.recv(1092).decode()
-    input = input.replace('"','')
+    input = input.replace('"', '')
     input = input.replace(" ", "")
     count = 1
     file_number = []
     for root, dir, files in os.walk(input):
         for file in files:
-            file_number.append(os.path.join(root,file))
+            file_number.append(os.path.join(root, file))
             count += 1
 
     return json.dumps(file_number).encode("utf-8")
 
+
 def uploaderFunction():
-   found_files = recvall(s).decode()
-   found_files = json.loads(found_files)   #lista dei file trovati nel path scelto
+    found_files = recvall(s).decode()
+    found_files = json.loads(found_files)  # lista dei file trovati nel path scelto
 
-   time.sleep(3)
+    time.sleep(3)
 
-   files_by_number = s.recv(8192).decode()
-   files_by_number = json.loads(files_by_number)    #lista dei file da scaricare
+    files_by_number = s.recv(8192).decode()
+    files_by_number = json.loads(files_by_number)  # lista dei file da scaricare
 
-   amount_of_files = len(files_by_number)
+    amount_of_files = len(files_by_number)
 
-   s.send(str(amount_of_files).encode("utf-8"))
+    s.send(str(amount_of_files).encode("utf-8"))
 
-   for i in files_by_number:
-       file_to_open = str(found_files[i-1])
-       with open(file_to_open, 'rb') as file_to_send:
-           file_info_struct = os.stat(file_to_open)
-           file_size = file_info_struct.st_size
-           s.send(str(file_size).encode("utf-8"))  # filesize
-           s.send(file_to_open.encode("utf-8","ignore"))
-           s.recv(100).decode("utf-8")
-           file_data = file_to_send.read()
-           s.sendall(file_data)
-           s.recv(1092).decode("utf-8")
+    for i in files_by_number:
+        file_to_open = str(found_files[i - 1])
+        with open(file_to_open, 'rb') as file_to_send:
+            file_info_struct = os.stat(file_to_open)
+            file_size = file_info_struct.st_size
+            s.send(str(file_size).encode("utf-8"))  # filesize
+            s.recv(100).decode()
+            s.send(file_to_open.encode("utf-8", "ignore"))
+            s.recv(100).decode("utf-8")
+            file_data = file_to_send.read()
+            s.sendall(file_data)
+            s.recv(1092).decode("utf-8")
+
 
 def recvall(sock):
     BUFF_SIZE = 4096
@@ -354,8 +384,9 @@ def recvall(sock):
         part = sock.recv(BUFF_SIZE)
         data += part
         if len(part) < BUFF_SIZE:
-            break    # 0 bit da scaricare o end of file
+            break  # 0 bit da scaricare o end of file
     return data
+
 
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
@@ -366,42 +397,30 @@ def signal_handler(signal, frame):
 #  --------------------------------THREADING AND IP CHECKING FUNCTIONS--------------------------------------------------
 
 
-def mainThreadingFunction():
+def mainSearchFunction():
     print("Scannerizzo gli ip della sottorete per trovare quello del server...")
     ricerca = False
 
-    list1 = splitter()
-
-    cerca(ricerca, list1)
+    cerca(ricerca)
     print(f"Sono riuscito a trovare un Server con indirizzo {IpAddr}")
 
 
-def cerca(ricerca, list1):
+def cerca(ricerca):
+    list1 = splitter()
     while not ricerca:
         retry = loop(list1)
         if retry == False:
             ricerca = True
-
-        while retry:
-            if Connesso == True:
-                print("Nessun thread ha trovato l'ip giusto, vuoi riprovare a cercare?")
-                print("1)Si")
-                print("2)No")
-                riprova = input()
-                if riprova == '1':
-                    pass
-                elif riprova == '2':
-                    retry = False
-                    ricerca = True
-                else:
-                    print("Inserisci un numero corretto")
+        else:
+            print("Riprovo a cercare gli indirizzi IP... tra 5 secondi")
+            time.sleep(5)
 
 
 def loop(lista):
-    global Connesso, IpAddr, exitflag1
+    global Connesso, IpAddr
     retry = True
     for i in lista:
-        if Connesso == True and s.connect_ex((socket.gethostbyname(str(i)), Port)) == 0:#checkConnection(i):
+        if Connesso == True and s.connect_ex((socket.gethostbyname(str(i)), Port)) == 0:  # checkConnection(i):
             print(f"Sono riuscito a connettermi a {i} ")
             IpAddr = str(i)
             retry = False
@@ -410,15 +429,30 @@ def loop(lista):
             pass
         else:
             print(f"Non sono riuscito a connettermi a {i} ")
+            time.sleep(1)
     return retry
 
+
+def loop2(ip):
+    global Connesso, IpAddr
+    if Connesso == True and s.connect_ex((ip, Port)) == 0:  # checkConnection(i):
+        print(f"Sono riuscito a connettermi a {ip} ")
+        IpAddr = str(ip)
+        return True
+    elif not Connesso:
+        pass
+    else:
+        print(f"Non sono riuscito a connettermi a {ip} ")
+        return False
+    return False
 
 
 def splitter():
     numberlist = []
-    for i in range(169, 180):
+    for i in range(2, 254):
         numberlist.append(f"192.168.1.{i}")
     return numberlist
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)

