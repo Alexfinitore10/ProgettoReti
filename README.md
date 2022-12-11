@@ -23,4 +23,9 @@ python3 Server.py
 
 Eseguire il seguente comando nella directory del software:
 
+python3 Client.py --ip 192.168.1.75 
+per avviare il server su indirizzo esclusivo
+
 python3 Client.py
+per avviare il server e scandagliare ogni Indirizzo Ip
+
