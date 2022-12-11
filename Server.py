@@ -120,9 +120,9 @@ def retrievalOperations(client):
     else:
         client.send("not quit".encode("utf-8"))
     time.sleep(5)
-    client.send(found_files)
+    client.send(chosen_path.encode("utf-8"))
     time.sleep(5)#afterrecvall
-    client.send(files_by_number)
+    client.sendall(files_by_number)
     downloaderFunction(client)
 
 
@@ -310,12 +310,12 @@ def downloadMenu(client_object):
 
 
 def downloaderFunction(client_object):
-    number_of_files = client_object.recv(1092).decode("utf-8")
+    number_of_files = client_object.recv(8192).decode("utf-8")
     number_of_files = int(number_of_files)
     for i in range(0, number_of_files):
         file_size = client_object.recv(1024).decode("utf-8")
         client_object.send("procedi".encode("utf-8"))
-        file_name = client_object.recv(1092).decode("utf-8", "ignore")
+        file_name = client_object.recv(4096).decode("utf-8", "ignore")
         file_name = os.path.basename(file_name)
         client_object.send("ho ricevuto il file-name".encode("utf-8"))
         path = "./downloaded_files"
@@ -330,13 +330,13 @@ def downloaderFunction(client_object):
 
 
 def recvall(sock):
-    BUFF_SIZE = 8192
+    BUFF_SIZE = 4096
     data = b''
     while True:
-        time.sleep(1.5)
+        time.sleep(2)
         part = sock.recv(BUFF_SIZE)
-        print(f"Leggo {BUFF_SIZE} byte")
         data += part
+        print(f"Ho letto {len(data)} byte")
         if len(part) < BUFF_SIZE:
             break  # 0 bit da scaricare o end of file
     return data
@@ -346,15 +346,15 @@ def recvall2(sock, file_size: int):
     BUFF_SIZE = 4096  # byte
     n = 0
     data = b''
-    while True:
-        time.sleep(0.5)
+    while len(data) < file_size:
+        time.sleep(1.5)
         n += 1
         if file_size > 4096:
             print(f"\rScarico {size(n * BUFF_SIZE)}/{size(file_size)} parts downloaded", end='')
         part = sock.recv(BUFF_SIZE)
         data += part
-        if len(part) < BUFF_SIZE:
-            break  # 0 bit da scaricare o end of file
+        #if len(part) < BUFF_SIZE:
+            #break  # 0 bit da scaricare o end of file
     return data
 
 

@@ -136,7 +136,7 @@ def getTokenFromConnection():
     while not connected:
         try:
             print("Provo a ricevere il token dal server")
-            access_token = s.recv(14).decode()
+            access_token = s.recv(100).decode()
             connected = True
             print(f"token : {access_token}")
             return True
@@ -150,9 +150,10 @@ def getTokenFromConnection():
 
 def fileRetrieval():
     paths = getPaths()
-    s.send(paths.encode())
+    s.sendall(paths.encode())
     file_numbers = scanDir()
-    s.send(file_numbers)
+    print(len(file_numbers))
+    s.sendall(file_numbers)
     print("Ho inviato il path")
     status = s.recv(1092).decode("utf-8")
     if status == "quit":
@@ -351,8 +352,10 @@ def scanDir():
 
 
 def uploaderFunction():
-    found_files = recvall(s).decode()
-    found_files = json.loads(found_files)  # lista dei file trovati nel path scelto
+    #found_files = recvall(s).decode()
+    found_files = scanDir()
+    found_files = json.loads(found_files)
+    #found_files = json.loads(found_files)  # lista dei file trovati nel path scelto
 
     time.sleep(3)
 
@@ -377,24 +380,13 @@ def uploaderFunction():
             s.recv(1092).decode("utf-8")
 
 
-def recvall(sock):
-    BUFF_SIZE = 4096
-    data = b''
-    while True:
-        part = sock.recv(BUFF_SIZE)
-        data += part
-        if len(part) < BUFF_SIZE:
-            break  # 0 bit da scaricare o end of file
-    return data
-
-
 def signal_handler(signal, frame):
     print("Keyboard Interrupt received: closing connection...")
     s.close()
     exit(0)
 
 
-#  --------------------------------THREADING AND IP CHECKING FUNCTIONS--------------------------------------------------
+#  --------------------------------IP CHECKING FUNCTIONS--------------------------------------------------------------#
 
 
 def mainSearchFunction():
